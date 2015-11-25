@@ -45,7 +45,8 @@ Coroutine Coroutine_new(size_t size) {
 }
 
 void Coroutine_bind(Coroutine coro, coro_cb_t main) {
-	if(Coroutine_isInit(coro) == 0) {
+	assert(Coroutine_isEnd(coro) || Coroutine_isInit(coro));
+	if(Coroutine_isEnd(coro)) {
 		coro->main = main;
 		return;
 	}
