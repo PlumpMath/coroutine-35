@@ -3,31 +3,42 @@
 
 #include <stdio.h>
 
-void run(Coroutine coro) {
-	printf("message from run: %s\n", (char*)(coro->res));
-	Coroutine_yield(coro);
-	printf("message from run: %s\n", (char*)(coro->res));
+void* run(Coroutine coro, void* args) {
+	printf(">> now inside RUN <<\n");
+	printf("message from run: %s\n", (char*)(args));
+	args = Coroutine_yield(coro, "OK");
+	printf("message from run: %s\n", (char*)(args));
+	return "done";
 }
 
-void run_again(Coroutine coro) {
-	printf("now inside run_again\n");
-	/* close cannot be used inside main of coroutine */
-	//Coroutine_close(coro);
+void* run_again(Coroutine coro, void* args) {
+	printf(">> now inside RUN_AGAIN <<\n");
+	printf("message from run_again: %s\n", (char*)(args));
+	args = Coroutine_yield(coro, "OK");
+	printf("message from run_again: %s\n", (char*)(args));
+	return "done";
 }
 
 void test() {
-	Coroutine coro = Coroutine_new(1024);
-	Coroutine_bind(coro, &run);
-	coro->res = "hello";
-	Coroutine_resume(coro);
-	printf("message from test: between yield\n");
-	coro->res = "world";
-	Coroutine_resume(coro);
+	char* res;
+	Coroutine coro = Coroutine_new(run, 1024);
+	assert(Coroutine_isInit(coro));
+	res = (char*)Coroutine_resume(coro, "hello");
+	assert(Coroutine_isPend(coro));
+	printf("message from run: %s\n", res);
+	res = (char*)Coroutine_resume(coro, "world");
+	assert(Coroutine_isEnd(coro));
+	printf("message from run: %s\n", res);
 	/* you can resume an already ended coroutine, but it is useless */
-	//Coroutine_resume(coro);
-	Coroutine_reset(coro);
-	Coroutine_bind(coro, run_again);
-	Coroutine_resume(coro);
+	assert(Coroutine_isEnd(coro));
+	Coroutine_reset(coro, run_again);
+	assert(Coroutine_isInit(coro));
+	res = (char*)Coroutine_resume(coro, "hello");
+	assert(Coroutine_isPend(coro));
+	printf("message from run_again: %s\n", res);
+	res = (char*)Coroutine_resume(coro, "world");
+	assert(Coroutine_isEnd(coro));
+	printf("message from run_again: %s\n", res);
 	Coroutine_close(coro);
 }
 
