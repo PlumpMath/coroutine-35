@@ -20,9 +20,12 @@
 	#define RLEN 8
 #endif
 
+#define CORO_PROMPT_RESET -1
+#define CORO_PROMPT_INIT   1
+
 struct coroutine;
 
-typedef void (*coro_cb_t)(struct coroutine*);
+typedef void* (*coro_cb_t)(struct coroutine*, void*);
 
 typedef enum cstat {
 	CORO_INIT,
@@ -51,34 +54,16 @@ typedef struct coroutine {
 #define Coroutine_isRun(coro)  ((coro)->state == CORO_RUN)
 #define Coroutine_isEnd(coro)  ((coro)->state == CORO_END)
 
-Coroutine Coroutine_new(size_t);
+Coroutine Coroutine_new(coro_cb_t, size_t);
 
 /* coroutine cannot be closed when it is running */
 #define Coroutine_close(coro) \
 	assert(!Coroutine_isRun(coro)); \
 	free((coro))
 
-/* bind the main function for coroutine */
-void Coroutine_bind(Coroutine, coro_cb_t);
-
-/* internal function of coroutine, do not use them */
-extern int  setreg(regbuf_t);
-extern int  regsw(regbuf_t, int);
-
-#define Coroutine_yield(coro)  \
-	assert(Coroutine_isRun(coro) || Coroutine_isInit(coro)); \
-	(coro)->state = CORO_PEND; \
-	regsw((coro)->env, 0)
-
-#define Coroutine_resume(coro) \
-	assert(Coroutine_isPend(coro)); \
-	(coro)->state = CORO_RUN;  \
-	regsw((coro)->env, 1)
-
-#define Coroutine_reset(coro)      \
-	assert(Coroutine_isEnd(coro)); \
-	(coro)->state = CORO_INIT;  \
-	regsw((coro)->env, -1)
+void* Coroutine_yield(Coroutine, void*);
+void* Coroutine_resume(Coroutine, void*);
+void  Coroutine_reset(Coroutine, coro_cb_t);
 
 /* functions for Debug */
 #if defined(DEBUG)

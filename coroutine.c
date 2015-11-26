@@ -3,6 +3,9 @@
 #include <stdio.h>
 #include <stdint.h>
 
+extern void* setreg(regbuf_t);
+extern void* regsw(regbuf_t, void*);
+
 #define PRIVATE static
 
 PRIVATE void __bridge() {
@@ -13,23 +16,26 @@ PRIVATE void __bridge() {
 	void** keys = (void**)zone;
 	Coroutine coro = (Coroutine)keys[0];
 
+	long ret;
+	void* para = regsw(coro->env, NULL);
 MAIN_RUN:
-	coro->main(coro);
-END_AGAIN:
+	para = coro->main(coro, para);
 	coro->state = CORO_END;
-	int ret = regsw(coro->env, 0);
+END_AGAIN:
+	ret = (long)regsw(coro->env, para);
 	switch(ret) {
-		case -1:
-			Coroutine_yield(coro);
+		case CORO_PROMPT_RESET:
+			para = regsw(coro->env, NULL);
 			goto MAIN_RUN;
 		default:
 	/* can not resume coroutine whose state is C_END */
 	/* this situation can be seen as a kind of error */
+			para = NULL;
 			goto END_AGAIN;
 	}
 }
 
-Coroutine Coroutine_new(size_t size) {
+Coroutine Coroutine_new(coro_cb_t main, size_t size) {
 	if(size <= STK_DEFAULT_SIZE) {
 		size = STK_DEFAULT_SIZE;
 	} else {
@@ -37,29 +43,42 @@ Coroutine Coroutine_new(size_t size) {
 	}
 	void* stk = aligned_alloc(PAGE_SIZE, size);
 	Coroutine coro = (Coroutine)stk;
-	coro->state = CORO_INIT;
+	coro->main = main;
 	coro->stk = stk;
 	coro->bot = stk + GREEN_ZONE;
 	coro->top = stk + (STK_DEFAULT_SIZE - RED_ZONE);
-	return coro;
-}
-
-void Coroutine_bind(Coroutine coro, coro_cb_t main) {
-	assert(Coroutine_isEnd(coro) || Coroutine_isInit(coro));
-	if(Coroutine_isEnd(coro)) {
-		coro->main = main;
-		return;
-	}
 	if(setreg(coro->env)) {
 		__bridge();
 		/* NOTICE: pc NEVER point to this position */
 	}
-	coro->state = CORO_PEND;
-	coro->main = main;
 	coro->sp = coro->env[0];
 	coro->env[0] = coro->top;
 	void* keys = coro->stk + (STK_DEFAULT_SIZE - sizeof(void*) * 12);
 	((void**)keys)[0] = coro;
+
+	regsw(coro->env, (void*)CORO_PROMPT_INIT);
+	coro->state = CORO_INIT;
+	return coro;
+}
+
+void* Coroutine_yield(Coroutine coro, void* para) {
+	assert(Coroutine_isRun(coro));
+	(coro)->state = CORO_PEND;
+	return regsw((coro)->env, para);
+}
+void* Coroutine_resume(Coroutine coro, void* para) {
+	assert(Coroutine_isPend(coro) || Coroutine_isInit(coro));
+	(coro)->state = CORO_RUN;
+	return regsw((coro)->env, para);
+}
+
+void Coroutine_reset(Coroutine coro, coro_cb_t main) {
+	assert(Coroutine_isEnd(coro));
+	if(main) {
+		(coro)->main = (main);
+	}
+	(coro)->state = CORO_INIT;
+	regsw((coro)->env, (void*)CORO_PROMPT_RESET);
 }
 
 /* the following functions is used for DEBUG */
