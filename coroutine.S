@@ -10,7 +10,7 @@
 #define JB_BP  4*4
 #define JB_PC  5*4
 
-        .file "md.S"
+        .file "coroutine.S"
         .text
 
         /* setreg(regbuf env) */
@@ -37,7 +37,7 @@ setreg:
 
 /****************************************************************/
 
-        /* regsw(regbuf env, int ret) */
+        /* regsw(regbuf env, void* para) */
 .globl regsw
         .type regsw, @function
         .align 16
@@ -121,7 +121,7 @@ setreg:
 
 /****************************************************************/
 
-        /* regsw(regbuf env, int ret) */
+        /* regsw(regbuf env, void* para) */
 .globl regsw
         .type regsw, @function
         .align 16
