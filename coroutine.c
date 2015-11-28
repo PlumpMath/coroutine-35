@@ -11,7 +11,7 @@ extern void* regsw(regbuf_t, void*);
 PRIVATE void __bridge() {
 	/* get the pointer to the keys */
 	void* zone;
-	zone = (void*)(((long)&zone + PAGE_SIZE - 1) / PAGE_SIZE * PAGE_SIZE);
+	zone = (void*)(((unsigned long)&zone + PAGE_SIZE - 1) / PAGE_SIZE * PAGE_SIZE);
 	zone -= sizeof(void*) * 12;
 	void** keys = (void**)zone;
 	Coroutine coro = (Coroutine)keys[0];
