@@ -2,6 +2,9 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/mman.h>
 
 extern void* setreg(regbuf_t);
 extern void* regsw(regbuf_t, void*);
@@ -41,8 +44,15 @@ Coroutine Coroutine_new(coro_cb_t main, size_t size) {
 	} else {
 		size = (size + PAGE_SIZE - 1) / PAGE_SIZE * PAGE_SIZE;
 	}
-	void* stk = aligned_alloc(PAGE_SIZE, size);
+	int mmap_flags = MAP_PRIVATE | MAP_ANON;
+	void* stk = mmap(NULL, size, PROT_READ | PROT_WRITE, mmap_flags, -1, 0);
+
+	if(stk == MAP_FAILED) {
+		return NULL;
+	}
+
 	Coroutine coro = (Coroutine)stk;
+	coro->len = size;
 	coro->main = main;
 	coro->stk = stk;
 	coro->bot = stk + GREEN_ZONE;
@@ -61,24 +71,32 @@ Coroutine Coroutine_new(coro_cb_t main, size_t size) {
 	return coro;
 }
 
+void Coroutine_close(Coroutine coro) {
+	assert(!Coroutine_isRun(coro));
+	/* it should not be error here, if the stk * len is not modified */
+	int ret = munmap(coro->stk, coro->len);
+	// TODO: check -1 here, and remove assert
+	assert(ret != -1);
+}
+
 void* Coroutine_yield(Coroutine coro, void* para) {
 	assert(Coroutine_isRun(coro));
-	(coro)->state = CORO_PEND;
-	return regsw((coro)->env, para);
+	coro->state = CORO_PEND;
+	return regsw(coro->env, para);
 }
 void* Coroutine_resume(Coroutine coro, void* para) {
 	assert(Coroutine_isPend(coro) || Coroutine_isInit(coro));
-	(coro)->state = CORO_RUN;
-	return regsw((coro)->env, para);
+	coro->state = CORO_RUN;
+	return regsw(coro->env, para);
 }
 
 void Coroutine_reset(Coroutine coro, coro_cb_t main) {
 	assert(Coroutine_isEnd(coro));
 	if(main) {
-		(coro)->main = (main);
+		coro->main = main;
 	}
-	(coro)->state = CORO_INIT;
-	regsw((coro)->env, (void*)CORO_PROMPT_RESET);
+	coro->state = CORO_INIT;
+	regsw(coro->env, (void*)CORO_PROMPT_RESET);
 }
 
 /* the following functions is used for DEBUG */

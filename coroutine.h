@@ -39,12 +39,13 @@ typedef void* regbuf_t[RLEN];
 typedef struct coroutine {
 	cstat_t state;
 	regbuf_t env;
-	void* stk;
-	void* top;
-	void* bot;
-	void* sp;
+	void*  stk;
+	size_t len;
+	void*  top;
+	void*  bot;
+	void*  sp;
+	void*  data;
 	coro_cb_t main;
-	void* res;
 } coroutine_t, *Coroutine;
 
 /* get or judge the status of coroutine */
@@ -55,11 +56,7 @@ typedef struct coroutine {
 #define Coroutine_isEnd(coro)  ((coro)->state == CORO_END)
 
 Coroutine Coroutine_new(coro_cb_t, size_t);
-
-/* coroutine cannot be closed when it is running */
-#define Coroutine_close(coro) \
-	assert(!Coroutine_isRun(coro)); \
-	free((coro))
+void Coroutine_close(Coroutine);
 
 void* Coroutine_yield(Coroutine, void*);
 void* Coroutine_resume(Coroutine, void*);
