@@ -11,13 +11,7 @@ extern void* regsw(regbuf_t, void*);
 
 #define PRIVATE static
 
-PRIVATE void __bridge() {
-	/* get the pointer to the keys */
-	void* zone;
-	zone = (void*)(((unsigned long)&zone + PAGE_SIZE - 1) / PAGE_SIZE * PAGE_SIZE);
-	zone -= sizeof(void*) * 12;
-	void** keys = (void**)zone;
-	Coroutine coro = (Coroutine)keys[0];
+PRIVATE void __sched(Coroutine coro) {
 
 	long ret;
 	void* para = regsw(coro->env, NULL);
@@ -56,17 +50,16 @@ Coroutine Coroutine_new(coro_cb_t main, size_t size) {
 	coro->main = main;
 	coro->stk = stk;
 	coro->bot = stk + GREEN_ZONE;
-	coro->top = stk + (STK_DEFAULT_SIZE - RED_ZONE);
-	if(setreg(coro->env)) {
-		__bridge();
-		/* NOTICE: pc NEVER point to this position */
+	coro->top = stk + (size - RED_ZONE);
+	Coroutine local = NULL;
+	if((local = setreg(coro->env))) {
+		__sched(local);
+		/* NOTICE: PC will NEVER arrive this position */
 	}
 	coro->sp = coro->env[0];
 	coro->env[0] = coro->top;
-	void* keys = coro->stk + (STK_DEFAULT_SIZE - sizeof(void*) * 12);
-	((void**)keys)[0] = coro;
 
-	regsw(coro->env, (void*)CORO_PROMPT_INIT);
+	regsw(coro->env, coro);
 	coro->state = CORO_INIT;
 	return coro;
 }

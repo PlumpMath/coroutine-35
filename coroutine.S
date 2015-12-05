@@ -4,10 +4,10 @@
  * Internal regbuf layout
  */
 #define JB_SP  0*4
-#define JB_BX  1*4
-#define JB_SI  2*4
-#define JB_DI  3*4
-#define JB_BP  4*4
+#define JB_BP  1*4
+#define JB_BX  2*4
+#define JB_SI  3*4
+#define JB_DI  4*4
 #define JB_PC  5*4
 
         .file "coroutine.S"
@@ -86,15 +86,15 @@ regsw:
  * Internal regbuf layout
  */
 #define JB_RSP  0*8
-#define JB_RBX  1*8
-#define JB_RBP  2*8
+#define JB_RBP  1*8
+#define JB_RBX  2*8
 #define JB_R12  3*8
 #define JB_R13  4*8
 #define JB_R14  5*8
 #define JB_R15  6*8
 #define JB_PC   7*8
 
-        .file "md.S"
+        .file "coroutine.S"
         .text
 
         /* setreg(regbuf env) */
