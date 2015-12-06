@@ -4,7 +4,10 @@
 #include <stdint.h>
 #include <fcntl.h>
 #include <unistd.h>
+#ifndef _WIN32
 #include <sys/mman.h>
+#endif
+
 
 extern void* setreg(regbuf_t);
 extern void* regsw(regbuf_t, void*);
@@ -38,14 +41,36 @@ Coroutine Coroutine_new(coro_cb_t main, size_t size) {
 	} else {
 		size = (size + PAGE_SIZE - 1) / PAGE_SIZE * PAGE_SIZE;
 	}
+#ifdef _WIN32
+	HANDLE hmap;
+	hmap = CreateFileMapping(
+			INVALID_HANDLE_VALUE,
+			NULL,
+			PAGE_READWRITE,
+			0,
+			size,
+			NULL
+	);
+	void* stk = MapViewOfFile(
+			hmap,
+			FILE_MAP_ALL_ACCESS,
+			0,
+			0,
+			size
+	);
+#else
 	int mmap_flags = MAP_PRIVATE | MAP_ANON;
 	void* stk = mmap(NULL, size, PROT_READ | PROT_WRITE, mmap_flags, -1, 0);
 
 	if(stk == MAP_FAILED) {
 		return NULL;
 	}
+#endif
 
 	Coroutine coro = (Coroutine)stk;
+#ifdef _WIN32
+	coro->page = hmap;
+#endif
 	coro->len = size;
 	coro->main = main;
 	coro->stk = stk;
@@ -66,10 +91,16 @@ Coroutine Coroutine_new(coro_cb_t main, size_t size) {
 
 void Coroutine_close(Coroutine coro) {
 	assert(!Coroutine_isRun(coro));
+#ifdef _WIN32
+	HANDLE hmap = coro->page;
+	UnmapViewOfFile(coro->stk);
+	CloseHandle(hmap);
+#else
 	/* it should not be error here, if the stk * len is not modified */
 	int ret = munmap(coro->stk, coro->len);
 	// TODO: check -1 here, and remove assert
 	assert(ret != -1);
+#endif
 }
 
 void* Coroutine_yield(Coroutine coro, void* para) {

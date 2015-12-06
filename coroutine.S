@@ -14,10 +14,16 @@
         .text
 
         /* setreg(regbuf env) */
+#ifdef _WIN32
+.globl _setreg
+		.def _setreg; .scl 2; .type 32; .endef
+_setreg:
+#else
 .globl setreg
         .type setreg, @function
         .align 16
 setreg:
+#endif
         movl 4(%esp), %eax
 
         movl %ebx, (JB_BX)(%eax)
@@ -33,15 +39,23 @@ setreg:
         movl %ebp, (JB_BP)(%eax)
         xorl %eax, %eax
         ret
+#ifndef _WIN32
         .size setreg, .-setreg
+#endif
 
 /****************************************************************/
 
         /* regsw(regbuf env, void* para) */
+#ifdef _WIN32
+.globl _regsw
+		.def _regsw; .scl 2; .type 32; .endef
+_regsw:
+#else
 .globl regsw
         .type regsw, @function
         .align 16
 regsw:
+#endif
 		/* get parameter */
 		movl 4(%esp), %eax
 		/* exchange BX */
@@ -76,7 +90,9 @@ regsw:
 		/* return the second value */
 		movl -8(%edx), %eax
 		jmp *%ecx
+#ifndef _WIN32
         .size regsw, .-regsw
+#endif
 
 /****************************************************************/
 
@@ -99,8 +115,13 @@ regsw:
 
         /* setreg(regbuf env) */
 .globl setreg
+#ifdef _WIN32
+		.def setreg; .scl 2; .type 32; .endef
+		.seh_proc setreg
+#else
         .type setreg, @function
         .align 16
+#endif
 setreg:
         movq %rbx, (JB_RBX)(%rdi)
         movq %rbp, (JB_RBP)(%rdi)
@@ -116,15 +137,23 @@ setreg:
         movq %rax, (JB_PC)(%rdi)
         xorq %rax, %rax
         ret
+#ifdef _WIN32
+		.seh_endproc
+#else
         .size setreg, .-setreg
-
+#endif
 
 /****************************************************************/
 
         /* regsw(regbuf env, void* para) */
 .globl regsw
+#ifdef _WIN32
+		.def regsw; .scl 2; .type 32; .endef
+		.seh_proc regsw
+#else
         .type regsw, @function
         .align 16
+#endif
 regsw:
 		/* exchange RBX */
 		movq (JB_RBX)(%rdi), %rdx
@@ -163,6 +192,10 @@ regsw:
 		/* return the second value */
 		movq %rsi, %rax
 		jmpq *%rcx
+#ifdef _WIN32
+		.seh_endproc
+#else
         .size regsw, .-regsw
+#endif
 #endif
 

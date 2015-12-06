@@ -9,6 +9,10 @@
 #include <stdlib.h>
 #include <stddef.h>
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 #define RED_ZONE 128
 #define GREEN_ZONE 512
 #define PAGE_SIZE 4096
@@ -39,6 +43,9 @@ typedef void* regbuf_t[RLEN];
 typedef struct coroutine {
 	cstat_t state;
 	regbuf_t env;
+#ifdef _WIN32
+	HANDLE page;
+#endif
 	void*  stk;
 	size_t len;
 	void*  top;
