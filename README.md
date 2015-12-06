@@ -4,17 +4,19 @@ A simple coroutine implementation for C.
 
 ### Acknowledge
 
-This coroutine implementation is not stable enough for products.
+This coroutine implementation is not stable enough for production.
+
+DO NOT use the coroutine across `fork` or `pthread`, unless you are sure that multi-process of multi-thread will not use the coroutine synchronously.
 
 ### Compatibility
 
 * Linux - both 32bit and 64bit
 
-* FreeBSD - 64bit, have not been tested on the 32bit platform
+* FreeBSD - 64bit, have not been tested on 32bit platform
 
 * Mac OS X - have not been tested
 
-* Windows - not compatible currently
+* Windows - 32bit, have not been testd on 64bit platform (with tdm-gcc)
 
 ### Status
 
